@@ -93,3 +93,27 @@ describe('GET /todos/id', () => {
   });
 
 });
+
+describe('DELETE /todos/:id', () => {
+  it('should remove a todo', (done) => {
+    request(app)
+      .delete(`/todos/${todos[0]._id.toHexString()}`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(todos[0].text);
+      })
+      .end(done);
+  });
+  it('should return 404 if id doent exist', (done) => {
+    request(app)
+      .delete(`/todos/5b9f98f9eb3958742c4aa3d2`)
+        .expect(404)
+        .end(done);
+  });
+  it('should return 400', (done) => {
+    request(app)
+      .delete(`/todos/${todos[0]._id.toHexString()}t`)
+      .expect(400)
+      .end(done);
+  });
+});
