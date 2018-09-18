@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 // const mLabURI = 'mongodb://akshay:Akkiro@45@ds161062.mlab.com:61062/node-todoappv01';
 // mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/TodoApp');
-mongoose.connect('mongodb://localhost:27017/TodoApp')
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
       console.log('Connected to MongoDB Server.');
     }).catch((e) => {
