@@ -117,3 +117,38 @@ describe('DELETE /todos/:id', () => {
       .end(done);
   });
 });
+
+describe('PATCH /todos/:id', () => {
+  const todo = {
+    text: 'changed todo',
+    completed: true
+  }
+  const todo1 = {
+    text: 'test todo',
+    completed: false
+  }
+  it('should update todo', (done) => {
+    request(app)
+      .patch(`/todos/${todos[0]._id.toHexString()}`)
+      .send(todo)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(todo.text);
+        expect(res.body.todo.completed).toBe(todo.completed);
+        expect(res.body.todo.completedAt).toBeA('number');
+      })
+      .end(done);
+
+  });
+  it('should clear completedAt when completed is false', (done) => {
+    request(app)
+      .patch(`/todos/${todos[0]._id.toHexString()}`)
+      .send(todo1)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.completed).toBe(false)
+        expect(res.body.todo.completedAt).toNotExist();
+      })
+      .end(done);
+  });
+});
