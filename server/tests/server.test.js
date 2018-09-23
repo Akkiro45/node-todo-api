@@ -187,7 +187,7 @@ describe('POST /users', () => {
           expect(doc).toExist();
           expect(doc.password).toNotBe(user.password);
           done();
-        });
+        }).catch((e) => done(e));
       });
   });
   it('should return validation error if request invalid', (done) => {
@@ -202,6 +202,38 @@ describe('POST /users', () => {
       .post('/users')
       .send({email: 'test1@test.com', password: 'shsssss'})
       .expect(400)
+      .end(done);
+  });
+});
+
+describe('POST /users/login', () => {
+  it('should login user and return token', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({email: users[0].email, password: users[0].password})
+      .expect(200)
+      .expect((res) => {
+        expect(res.headers['x-auth']).toExist();
+      })
+      .end((err) => {
+        if(err) {
+          return done(err);
+        }
+        User.findOne({email: users[0].email}).then((user) => {
+          expect(user.email).toBe(users[0].email);
+          expect(user.password).toNotBe(users[0].passwors);
+          done();
+        }).catch((e) => done(e));
+      });
+  });
+  it('should reject user if invalid login', (done) => {
+    request(app)
+      .post('/users/login')
+      .send({email: 'sss', password: 'sjsjks'})
+      .expect(400)
+      .expect((res) => {
+        expect(res.headers['x-auth']).toNotExist();
+      })
       .end(done);
   });
 });
