@@ -3,6 +3,7 @@ const _ = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
+const bcrypt = require('bcryptjs');
 
 const {mongoose} = require('./db/mongoose');
 const {Todo} = require('./models/todo');
@@ -93,6 +94,38 @@ app.post('/users', (req, res) => {
 app.get('/users/me', authenticate, (req, res) => {
   res.send(req.user);
 });
+
+app.post('/users/login', (req, res) => {
+  const userObj = _.pick(req.body, ['email', 'password'])
+  User.findOne({email: userObj.email}).then((doc) => {
+    bcrypt.compare(userObj.password, doc.password, (err, r) => {
+      if(err) {
+        return res.status(400).send('Invalid Password.');
+      }
+      if(r) {
+        doc.generateAuthToken().then((token) => {
+              res.header('x-auth', token).send(doc);
+            });
+        // res.header('x-auth', doc.tokens[0].token).send(doc);
+      } else {
+        res.status(401).send('Incorect password.');
+      }
+    })
+  }).catch((e) => {
+    res.status(400).send('Invalid email.');
+  });
+});
+
+// app.post('/users/login', (req, res) => {
+//   const body = _.pick(req.body, ['email', 'password']);
+//   User.findByCredentials(body.email, body.password).then((user) => {
+//     user.generateAuthToken().then((token) => {
+//       res.header('x-auth', token).send(user);
+//     });
+//   }).catch((e) => {
+//     res.status(400).send('Invalid email or password!');
+//   });
+// });
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}.`);
