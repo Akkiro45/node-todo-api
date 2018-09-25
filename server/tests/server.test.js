@@ -15,6 +15,7 @@ describe('POST /todos', () => {
     const text = 'Some test text';
     request(app)
       .post('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .send({text})
       .expect(200)
       .expect((res) => {
@@ -36,6 +37,7 @@ describe('POST /todos', () => {
     request(app)
       .post('/todos')
       .send({})
+      .set('x-auth', users[0].tokens[0].token)
       .expect(400)
       .end((err, res) => {
         if(err) return done(err);
@@ -51,10 +53,11 @@ describe('GET /todos', () => {
   it('should retuen array of todos', (done) => {
     request(app)
       .get('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todos).toBeA('array');
-        expect(res.body.todos.length).toBe(2);
+        expect(res.body.todos.length).toBe(1);
       })
       .end(done);
   });
@@ -64,21 +67,31 @@ describe('GET /todos/id', () => {
   it('should return todo', (done) => {
     request(app)
       .get(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo.text).toBe(todos[0].text);
       })
       .end(done);
   });
+  it('should not return todo created by other user', (done) => {
+    request(app)
+      .get(`/todos/${todos[1]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
+      .end(done);
+  });
   it('should return 400', (done) => {
     request(app)
       .get(`/todos/${todos[0]._id.toHexString()}9`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(400)
       .end(done);
   });
   it('should return 404', (done) => {
     request(app)
       .get('/todos/5b9f98f9eb3958742c4aa3d2')
+      .set('x-auth', users[0].tokens[0].token)
       .expect(404)
       .end(done);
   });
@@ -89,21 +102,31 @@ describe('DELETE /todos/:id', () => {
   it('should remove a todo', (done) => {
     request(app)
       .delete(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo.text).toBe(todos[0].text);
       })
       .end(done);
   });
+  it('should not remove a todo by other user', (done) => {
+    request(app)
+      .delete(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[1].tokens[0].token)
+      .expect(404)
+      .end(done);
+  });
   it('should return 404 if id doent exist', (done) => {
     request(app)
       .delete(`/todos/5b9f98f9eb3958742c4aa3d2`)
-        .expect(404)
-        .end(done);
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
+      .end(done);
   });
   it('should return 400', (done) => {
     request(app)
       .delete(`/todos/${todos[0]._id.toHexString()}t`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(400)
       .end(done);
   });
@@ -121,6 +144,7 @@ describe('PATCH /todos/:id', () => {
   it('should update todo', (done) => {
     request(app)
       .patch(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .send(todo)
       .expect(200)
       .expect((res) => {
@@ -131,9 +155,19 @@ describe('PATCH /todos/:id', () => {
       .end(done);
 
   });
+  it('should not update todo by other user', (done) => {
+    request(app)
+      .patch(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[1].tokens[0].token)
+      .send(todo)
+      .expect(404)
+      .end(done);
+
+  });
   it('should clear completedAt when completed is false', (done) => {
     request(app)
       .patch(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .send(todo1)
       .expect(200)
       .expect((res) => {
@@ -145,17 +179,17 @@ describe('PATCH /todos/:id', () => {
 });
 
 describe('GET /users/me', () => {
-  // it('should return user if authenticated', (done) => {
-  //   request(app)
-  //     .get('/users/me')
-  //     .set('x-auth', users[0].tokens[0].token)
-  //     .expect(200)
-  //     .expect((res) => {
-  //       expect(res.body.email).toBe(users[0].email);
-  //       expect(res.body._id).toBe(users[0]._id.toHexString());
-  //     })
-  //     .end(done);
-  // });
+  it('should return user if authenticated', (done) => {
+    request(app)
+      .get('/users/me')
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.email).toBe(users[0].email);
+        expect(res.body._id).toBe(users[0]._id.toHexString());
+      })
+      .end(done);
+  });
   it('should return 401 if user is not authenticated', (done) => {
     request(app)
       .get('/users/me')
@@ -235,5 +269,21 @@ describe('POST /users/login', () => {
         expect(res.headers['x-auth']).toNotExist();
       })
       .end(done);
+  });
+});
+
+describe('DELETE /users/me/token', () => {
+  it('should remove auth token on logout', (done) => {
+    request(app)
+      .delete('/users/me/token')
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .end((err) => {
+        if(err) return done(err);
+        User.findById(users[0]._id).then((user) => {
+          expect(user.tokens.length).toBe(0);
+          done();
+        })
+      });
   });
 });
